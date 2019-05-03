@@ -1,2 +1,5 @@
-*.confidential.*
-*.exe
+/cache/
+/__pycache__/
+/.ipynb_checkpoints/
+
+/config.ini
