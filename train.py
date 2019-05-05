@@ -1,90 +1,78 @@
-import os
-
-def toRelPath(origPath):
-	"""Converts path to path relative to current script
-
-	origPath:	path to convert
-	"""
-	if not hasattr(toRelPath, "__location__"):
-		toRelPath.__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-	return os.path.join(toRelPath.__location__, origPath)
-
-####end of library
-
-import numpy as np
-import keras
 import configparser
 import json
+import textgenrnn
+import tensorflow as tf
 
-#read config
+# parse configuration
 config = configparser.ConfigParser()
-config.read(toRelPath("config.ini"))
+config.read("config.ini")
+config = config["train"]
 
-#get model name from input
-modelName = input("Name this model: ")
+# proportion of all datapoints to use to train + validate network; useful for testing network on small dataset
+DATA_PROPORTION = float(config["data-prop"])
 
-#read in data
-text = open(toRelPath(config["char-rnn"]["model-data"])).read()
+# proportion of all datapoints to use for training; the rest is used for validation
+TRAIN_PROPORTION = float(config["train-prop"])
 
-#create mapping of unique chars to integers
-chars = sorted(list(set(text)))
-char_to_int = dict((c, i) for i, c in enumerate(chars))
-int_to_char = dict((i, c) for i, c in enumerate(chars))
-print("Char mapping: ", char_to_int)
+# length of inputs to RNN while training; maximum memory of the RNN
+INPUT_LEN = int(config["input-len"])
 
-#summarize the loaded data
-cChrs = len(text)
-cAlphabet = len(chars)
-print("Text length: ", cChrs)
-print("Alphabet size: ", cAlphabet)
+# batch size during training
+BATCH_SIZE = int(config["batch-size"])
 
-#prepare the dataset of input to output pairs encoded as integers
-#use data here
-seqLen = int(config["char-rnn"]["model-timesteps"])
-dataX = []
-dataY = []
-for i in range(0, cChrs - seqLen):
-	seq_in = text[i:i + seqLen]
-	seq_out = text[i + seqLen]
-	dataX.append([char_to_int[char] for char in seq_in])
-	dataY.append(char_to_int[seq_out])
-cPatterns = len(dataX)
-print("Datapoint count: ", cPatterns)
+# epochs to train for
+TRAIN_EPOCHS = int(config["train-epochs"])
 
-#reshape X to be [samples, time steps, features]
-X = np.reshape(dataX, (cPatterns, seqLen, 1))
-#normalize
-X = X / float(cAlphabet)
-#one hot encode the output variable
-#char-RNN uses one-hot as well
-Y = keras.utils.to_categorical(dataY)
+SAVE_EPOCHS = int(config["save-epochs"])
+RNN_LAYERS = int(config["rnn-layers"])
+RNN_NODES = int(config["rnn-nodes"])
+EMBEDDINGS = int(config["embeddings"])
 
-#define the LSTM model
-model = keras.models.Sequential()
-model.add(keras.layers.GRU(512, input_shape=(X.shape[1], X.shape[2]), return_sequences=True))
-model.add(keras.layers.BatchNormalization())
-model.add(keras.layers.Dropout(0.4))
-model.add(keras.layers.GRU(512))
-model.add(keras.layers.BatchNormalization())
-model.add(keras.layers.Dropout(0.4))
+# memory settings
+MEMORY_PROPORTION = float(config["memory-prop"])
+MEMORY_GROWTH = (config["memory-growth"] == "true")
 
-#do not train with temperature
-#model.add(keras.layers.Lambda(lambda x: x / float(config["common"]["model-temp"])))
+# set memory usage limits
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = MEMORY_PROPORTION
+config.gpu_options.allow_growth = True
+session = tf.Session(config=config)
 
-model.add(keras.layers.Dense(Y.shape[1], activation='softmax'))
+# load scraped data
+with open("assets/confessions.json", "r") as infile:
+    data = json.loads(infile.read())
 
-optimizer = keras.optimizers.adam(lr=0.0003)
-model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
+# summarize data and create vocabulary
+texts = []
+for key, value in data.items():
+    # add the unicode escaped string and train on that to avoid a large vocab of emojis
+    texts.append(value["text"]
+                 .replace("‘", "'")
+                 .replace("’", "'")
+                 .replace("“", "\"")
+                 .replace("”", "\"")
+                 .encode("unicode-escape")
+                 .decode("ascii"))
 
-#define the checkpoint
-filepath=toRelPath(config["train"]["train-models"] + modelName + "-{epoch}-{loss:.3f}-{val_loss:.3f}.hdf5")
-checkpoint = keras.callbacks.ModelCheckpoint(filepath, monitor='loss', verbose=1, mode='min')
+print("Using", DATA_PROPORTION, "of all", len(texts), "datapoints.")
+texts = texts[:int(DATA_PROPORTION * len(texts))]
 
-#check if a checkpoint is specified to continue from
-epochStart = 0
-if config["train"]["train-resume"] != "":
-	model.load_weights(toRelPath(config["train"]["train-resume"]))
-	epochStart = int(config["train"]["train-resume-epoch"])
-
-#fit the model
-model.fit(X, Y, epochs=int(config["train"]["train-epochs"]), batch_size=int(config["train"]["train-batch-size"]), callbacks=[checkpoint], initial_epoch=epochStart, validation_split=0.1)
+model = textgenrnn.textgenrnn(
+    name="cache/" + str(INPUT_LEN) + "-" + str(EMBEDDINGS) +
+    "-" + str(RNN_LAYERS) + "-" + str(RNN_NODES)
+)
+model.train_on_texts(
+    texts,
+    num_epochs=TRAIN_EPOCHS,
+    batch_size=BATCH_SIZE,
+    train_size=TRAIN_PROPORTION,
+    save_epochs=SAVE_EPOCHS,
+    gen_epochs=SAVE_EPOCHS * 16,
+    new_model=True,
+    max_length=INPUT_LEN,
+    rnn_layers=RNN_LAYERS,
+    rnn_size=RNN_NODES,
+    dim_embeddings=EMBEDDINGS
+)
+print(model.model.summary())
+session.close()
