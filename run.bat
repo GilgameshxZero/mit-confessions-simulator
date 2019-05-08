@@ -2,5 +2,5 @@
 call activate mcs
 :loop
 python post.py
-timeout 3600
+timeout /t 3600 /nobreak
 goto loop

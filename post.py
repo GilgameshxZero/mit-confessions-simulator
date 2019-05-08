@@ -8,21 +8,20 @@ import textgenrnn
 import zipfile
 import io
 
+# parse configuration
+config = configparser.ConfigParser()
+config.read("config.ini")
+config = config["post"]
+
 # download chromedriver
 try:
-    request = requests.get(
-        "https://chromedriver.storage.googleapis.com/74.0.3729.6/chromedriver_win32.zip")
+    request = requests.get(config["chromedriver"])
     file = zipfile.ZipFile(io.BytesIO(request.content))
     file.extractall("cache/")
     file.close()
 except:
     traceback.print_exc()
-    print("Exception while downloading chromedriver")
-
-# parse configuration
-config = configparser.ConfigParser()
-config.read("config.ini")
-config = config["post"]
+    print("Exception while extracting downloaded chromedriver...")
 
 model_name = config["model"]
 model = textgenrnn.textgenrnn(weights_path=model_name + "-weights.hdf5",
@@ -44,6 +43,9 @@ retries_left = 5
 while retries_left > 0:
     try:
         chrome_options = selenium.webdriver.chrome.options.Options()
+        if config["user-dir"] != "":
+            chrome_options.add_argument(
+                "--user-data-dir=" + config["user-dir"])
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--mute-audio")
         chrome_options.add_argument("--log-level=3")
@@ -57,11 +59,16 @@ while retries_left > 0:
             "cache/chromedriver.exe", options=chrome_options)
         driver.implicitly_wait(0)
 
-        # login
-        driver.get("https://www.facebook.com/login.php")
-        driver.find_element_by_id("email").send_keys(config["username"])
-        driver.find_element_by_id("pass").send_keys(config["password"])
-        driver.find_element_by_id("loginbutton").click()
+        try:
+            # login
+            driver.get("https://www.facebook.com/login.php")
+            driver.find_element_by_id("email").send_keys(config["username"])
+            driver.find_element_by_id("pass").send_keys(config["password"])
+            driver.find_element_by_id("loginbutton").click()
+        except:
+            # if profile is being used, then we won't need to login
+            print("Failed to login; is user already logged in?")
+
         driver.get(
             "https://www.facebook.com/pg/mitconfessionssimulator/posts/")
 
