@@ -39,58 +39,54 @@ for a in range(CHOOSE_FROM_N):
 print("Posting:", post)
 
 # publish post
-retries_left = 5
-while retries_left > 0:
+try:
+    chrome_options = selenium.webdriver.chrome.options.Options()
+    if config["user-dir"] != "":
+        chrome_options.add_argument(
+            "--user-data-dir=" + config["user-dir"])
+    chrome_options.add_argument("--disable-notifications")
+    chrome_options.add_argument("--mute-audio")
+    chrome_options.add_argument("--log-level=3")
+    chrome_options.add_argument("--silent")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--allow-insecure-localhost")
+    chrome_options.add_argument("--disable-extensions")
+    if config["headless"] == "true":
+        chrome_options.add_argument("--headless")
+    driver = selenium.webdriver.Chrome(
+        "cache/chromedriver.exe", options=chrome_options)
+    driver.implicitly_wait(0)
+
     try:
-        chrome_options = selenium.webdriver.chrome.options.Options()
-        if config["user-dir"] != "":
-            chrome_options.add_argument(
-                "--user-data-dir=" + config["user-dir"])
-        chrome_options.add_argument("--disable-notifications")
-        chrome_options.add_argument("--mute-audio")
-        chrome_options.add_argument("--log-level=3")
-        chrome_options.add_argument("--silent")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--allow-insecure-localhost")
-        chrome_options.add_argument("--disable-extensions")
-        if config["headless"] == "true":
-            chrome_options.add_argument("--headless")
-        driver = selenium.webdriver.Chrome(
-            "cache/chromedriver.exe", options=chrome_options)
-        driver.implicitly_wait(0)
-
-        try:
-            # login
-            driver.get("https://www.facebook.com/login.php")
-            driver.find_element_by_id("email").send_keys(config["username"])
-            driver.find_element_by_id("pass").send_keys(config["password"])
-            driver.find_element_by_id("loginbutton").click()
-        except:
-            # if profile is being used, then we won't need to login
-            print("Failed to login; is user already logged in?")
-
-        driver.get(
-            "https://www.facebook.com/pg/mitconfessionssimulator/posts/")
-
-        # post
-        driver.execute_script(
-            "arguments[0].click();", driver.find_element_by_css_selector("div._3nd0"))
-        actions = selenium.webdriver.common.action_chains.ActionChains(driver)
-        actions.send_keys(post)
-        actions.perform()
-        driver.execute_script(
-            "arguments[0].click();", driver.find_element_by_css_selector("button._1mf7"))
-
-        # wait for a bit for publish to go through
-        time.sleep(10)
-        retries_left = 0
+        # login
+        driver.get("https://www.facebook.com/login.php")
+        driver.find_element_by_id("email").send_keys(config["username"])
+        driver.find_element_by_id("pass").send_keys(config["password"])
+        driver.find_element_by_id("loginbutton").click()
     except:
-        traceback.print_exc()
-        print("Exception encountered; retrying...")
+        # if profile is being used, then we won't need to login
+        print("Failed to login; is user already logged in?")
 
-        retries_left -= 1
-    finally:
-        try:
-            driver.close()
-        except:
-            pass
+    driver.get(
+        "https://www.facebook.com/pg/mitconfessionssimulator/posts/")
+
+    # post
+    driver.execute_script(
+        "arguments[0].click();", driver.find_element_by_css_selector("div._3nd0"))
+    actions = selenium.webdriver.common.action_chains.ActionChains(driver)
+    actions.send_keys(post)
+    actions.perform()
+    driver.execute_script(
+        "arguments[0].click();", driver.find_element_by_css_selector("button._84a0"))
+
+    # wait for a bit for publish to go through
+    time.sleep(10)
+    retries_left = 0
+except:
+    traceback.print_exc()
+    print("Exception encountered; aborting...")
+finally:
+    try:
+        driver.close()
+    except:
+        pass
