@@ -28,12 +28,13 @@ model = textgenrnn.textgenrnn(weights_path=model_name + "-weights.hdf5",
                               vocab_path=model_name + "-vocab.json",
                               config_path=model_name + "-config.json")
 
-# dynamically generate post as the shortest one of 10
+# dynamically generate post as the shortest one of several
 CHOOSE_FROM_N = int(config["choose-from-n"])
 posts = model.generate(n=CHOOSE_FROM_N, return_as_list=True,
                        temperature=float(config["temperature"]), max_gen_length=1000)
+# posts = ['test_post', 'test_post 2']
 post = ""
-for a in range(CHOOSE_FROM_N):
+for a in range(len(posts)):
     if post == "" or len(posts[a]) < len(post):
         post = posts[a].encode("ascii").decode("unicode-escape")
 print("Posting:", post)
@@ -77,7 +78,7 @@ try:
     actions.send_keys(post)
     actions.perform()
     driver.execute_script(
-        "arguments[0].click();", driver.find_element_by_css_selector("button._84a0"))
+        "arguments[0].click();", driver.find_element_by_css_selector("#composerPostButton>div>button"))
 
     # wait for a bit for publish to go through
     time.sleep(10)
