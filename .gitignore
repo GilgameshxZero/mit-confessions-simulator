@@ -1,3 +1,6 @@
+**/.dropbox.attr
+**/.DS_Store
+
 /cache/
 /__pycache__/
 /.ipynb_checkpoints/
