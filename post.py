@@ -31,10 +31,10 @@ model = textgenrnn.textgenrnn(weights_path=model_name + "-weights.hdf5",
 # dynamically generate post as the shortest one of several
 CHOOSE_FROM_N = int(config["choose-from-n"])
 
-# posts = model.generate(n=CHOOSE_FROM_N, return_as_list=True,
-#                        temperature=float(config["temperature"]), max_gen_length=1000)
+posts = model.generate(n=CHOOSE_FROM_N, return_as_list=True,
+                       temperature=float(config["temperature"]), max_gen_length=1000)
 
-posts = ["#0 TEST"]
+# posts = ["#0 TEST"]
 post = ""
 for a in range(len(posts)):
     if post == "" or len(posts[a]) < len(post):
@@ -74,7 +74,7 @@ try:
         "https://www.facebook.com/pg/mitconfessionssimulator/posts/")
 
     # post
-    input()
+    # input()
     driver.execute_script(
         "arguments[0].click();", driver.find_element_by_xpath("//div[.='Write a post...']"))
     time.sleep(5)
