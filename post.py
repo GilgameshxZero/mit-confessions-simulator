@@ -31,10 +31,10 @@ model = textgenrnn.textgenrnn(weights_path=model_name + "-weights.hdf5",
 # dynamically generate post as the shortest one of several
 CHOOSE_FROM_N = int(config["choose-from-n"])
 
-posts = model.generate(n=CHOOSE_FROM_N, return_as_list=True,
-                       temperature=float(config["temperature"]), max_gen_length=1000)
+# posts = model.generate(n=CHOOSE_FROM_N, return_as_list=True,
+#                        temperature=float(config["temperature"]), max_gen_length=1000)
 
-# posts = ["#10868 why is there anyone Scott Confessions posted on the game? Asking for a friend."]
+posts = ["#0 TEST"]
 post = ""
 for a in range(len(posts)):
     if post == "" or len(posts[a]) < len(post):
@@ -44,7 +44,7 @@ print("Posting:", post)
 # publish post
 try:
     chrome_options = selenium.webdriver.chrome.options.Options()
-    if config["user-dir"] != "":
+    if "user-dir" in config and config["user-dir"] != "":
         chrome_options.add_argument(
             "--user-data-dir=" + config["user-dir"])
     chrome_options.add_argument("--disable-notifications")
@@ -74,14 +74,15 @@ try:
         "https://www.facebook.com/pg/mitconfessionssimulator/posts/")
 
     # post
+    input()
     driver.execute_script(
-        "arguments[0].click();", driver.find_element_by_xpath("//textarea[@placeholder='Write a post...']"))
+        "arguments[0].click();", driver.find_element_by_xpath("//div[.='Write a post...']"))
     time.sleep(5)
     actions = selenium.webdriver.common.action_chains.ActionChains(driver)
     actions.send_keys(post)
     actions.perform()
     driver.execute_script(
-        "arguments[0].click();", driver.find_element_by_xpath("//button[@type='submit' and contains(., 'Post')]"))
+        "arguments[0].click();", driver.find_element_by_xpath("//button[@type='submit' and contains(., 'Share Now')]"))
 
     # wait for a bit for publish to go through
     time.sleep(10)
