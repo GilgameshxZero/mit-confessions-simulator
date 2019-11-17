@@ -7,6 +7,7 @@ import traceback
 import textgenrnn
 import zipfile
 import io
+import json
 
 # parse configuration
 config = configparser.ConfigParser()
@@ -28,17 +29,34 @@ model = textgenrnn.textgenrnn(weights_path=model_name + "-weights.hdf5",
                               vocab_path=model_name + "-vocab.json",
                               config_path=model_name + "-config.json")
 
-# dynamically generate post as the shortest one of several
+# if we need to, dynamically generate post as the shortest one of several
 CHOOSE_FROM_N = int(config["choose-from-n"])
-
-posts = model.generate(n=CHOOSE_FROM_N, return_as_list=True,
-                       temperature=float(config["temperature"]), max_gen_length=1000)
-
+CACHED_POSTS_N = int(config["cached-posts-n"])
 # posts = ["#0 TEST"]
-post = ""
-for a in range(len(posts)):
-    if post == "" or len(posts[a]) < len(post):
-        post = posts[a].encode("ascii").decode("unicode-escape")
+posts = []
+
+# check the cache to see if we have posts already generated
+try:
+    with open("cache/cached-posts.json", "r", encoding="utf-8") as cache_fp:
+        posts = json.load(cache_fp)
+    print("Loaded", len(posts), "cached posts.")
+except:
+    print("Could not locate cached posts.")
+
+if len(posts) == 0:
+    print("Generating new cache with n =", CACHED_POSTS_N, "; choose =", CHOOSE_FROM_N)
+    choose_from_posts = model.generate(n=CACHED_POSTS_N * CHOOSE_FROM_N, return_as_list=True,
+                                       temperature=float(config["temperature"]), max_gen_length=1000)
+    for a in range(0, CACHED_POSTS_N * CHOOSE_FROM_N, CHOOSE_FROM_N):
+        post_to_add = None
+        for b in range(a, a + CHOOSE_FROM_N):
+            if post_to_add == None or len(choose_from_posts[b]) < len(post_to_add):
+                post_to_add = choose_from_posts[b].encode(
+                    "ascii").decode("unicode-escape")
+        posts.append(post_to_add)
+    print("Cache:", posts)
+
+post = posts[0]
 print("Posting:", post)
 
 # publish post
@@ -87,11 +105,19 @@ try:
     # wait for a bit for publish to go through
     time.sleep(10)
     retries_left = 0
+
+    # success, remove post from cache
+    posts.remove(post)
 except:
     traceback.print_exc()
-    print("Exception encountered; aborting...")
+    print("Exception encountered while using chromedriver; aborting...")
 finally:
     try:
         driver.close()
     except:
         pass
+
+# write the posts we haven't used back to the cache file
+print("Writing remaining posts back to cache...")
+with open("cache/cached-posts.json", "w", encoding="utf-8") as cache_fp:
+    json.dump(posts, cache_fp)
