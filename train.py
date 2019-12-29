@@ -33,10 +33,10 @@ MEMORY_PROPORTION = float(config["memory-prop"])
 MEMORY_GROWTH = (config["memory-growth"] == "true")
 
 # set memory usage limits
-config = tf.ConfigProto()
+config = tf.compat.v1.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = MEMORY_PROPORTION
 config.gpu_options.allow_growth = True
-session = tf.Session(config=config)
+session = tf.compat.v1.Session(config=config)
 
 # load scraped data
 with open("assets/confessions.json", "r") as infile:

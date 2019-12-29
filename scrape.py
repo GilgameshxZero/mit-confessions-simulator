@@ -24,20 +24,19 @@ def login_driver(driver):
     driver.find_element_by_id("loginbutton").click()
 
 
+# parse configuration
+config = configparser.ConfigParser()
+config.read("config.ini")
+config = config["scrape"]
+
 # download chromedriver
 try:
-    request = requests.get(
-        "https://chromedriver.storage.googleapis.com/73.0.3683.20/chromedriver_win32.zip")
+    request = requests.get(config["chromedriver"])
     file = zipfile.ZipFile(io.BytesIO(request.content))
     file.extractall("cache/")
     file.close()
 except:
     pass
-
-# parse configuration
-config = configparser.ConfigParser()
-config.read("config.ini")
-config = config["scrape"]
 
 # setup options
 chrome_options = selenium.webdriver.chrome.options.Options()

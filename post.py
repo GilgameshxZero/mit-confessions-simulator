@@ -44,7 +44,8 @@ except:
     print("Could not locate cached posts.")
 
 if len(posts) == 0:
-    print("Generating new cache with n =", CACHED_POSTS_N, "; choose =", CHOOSE_FROM_N)
+    print("Generating new cache with n =",
+          CACHED_POSTS_N, "; choose =", CHOOSE_FROM_N)
     choose_from_posts = model.generate(n=CACHED_POSTS_N * CHOOSE_FROM_N, return_as_list=True,
                                        temperature=float(config["temperature"]), max_gen_length=1000)
     for a in range(0, CACHED_POSTS_N * CHOOSE_FROM_N, CHOOSE_FROM_N):
