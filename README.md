@@ -1,3 +1,3 @@
-# MIT Confessions Bot
+# mit-confessions-simulator
 
-http://emilia-tan.com/#tech-blog&mit-confessions-bot
+Temporarily retired.
